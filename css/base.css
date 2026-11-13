@@ -1,0 +1,206 @@
+/* ===================== VARIÁVEIS ===================== */
+:root {
+  --bg:         #0D1B2A;
+  --surface:    #142233;
+  --surface2:   #1a2d42;
+  --border:     #2a4460;      /* mais visível que o original */
+  --gold:       #C9A84C;
+  --gold-dim:   #8a6e30;
+  --gold-light: #e8c97a;
+  --text:       #e8e0d0;
+  --text-dim:   #8a9bb0;
+  --text-muted: #4a607a;
+  --white:      #ffffff;
+  --green:      #4caf80;
+  --red:        #c95c4c;
+  --key-white:  #f5f0e8;
+  --key-black:  #1a1410;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Inter', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  display: flex;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+/* ===================== SIDEBAR (desktop) ===================== */
+#sidebar {
+  width: 220px;
+  min-width: 220px;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  transition: transform 0.25s ease;
+  z-index: 150;
+}
+
+.sidebar-logo {
+  padding: 24px 20px 18px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.sidebar-logo h1 {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--gold);
+  letter-spacing: 0.01em;
+  line-height: 1.2;
+}
+.sidebar-logo p {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.sidebar-section {
+  padding: 16px 16px 6px;
+  font-size: 0.62rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  cursor: pointer;
+  color: var(--text-dim);
+  font-size: 0.82rem;
+  font-weight: 400;
+  transition: background 0.15s, color 0.15s;
+  border-left: 3px solid transparent;
+  margin: 1px 4px;
+  border-radius: 0 6px 6px 0;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+.nav-item:hover  { background: var(--surface2); color: var(--text); }
+.nav-item.active {
+  background: rgba(201,168,76,0.12);
+  color: var(--gold-light);
+  border-left-color: var(--gold);
+  font-weight: 500;
+}
+.nav-icon { font-size: 1.05rem; width: 22px; text-align: center; flex-shrink: 0; }
+
+/* ===================== MAIN ===================== */
+#main {
+  flex: 1;
+  overflow-y: auto;
+  background: var(--bg);
+}
+
+.tool-page {
+  display: none;
+  padding: 32px 36px;
+  min-height: 100%;
+}
+.tool-page.active { display: block; }
+
+.page-header {
+  margin-bottom: 28px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--border);
+}
+.page-header h2 {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.7rem;
+  font-weight: 600;
+  color: var(--white);
+  margin-bottom: 6px;
+}
+.page-header p { font-size: 0.85rem; color: var(--text-dim); }
+
+/* ===================== SCROLLBAR ===================== */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--gold-dim); }
+
+/* ===================== MOBILE ===================== */
+@media (max-width: 768px) {
+
+  body { flex-direction: column; overflow: hidden; }
+
+  /* Sidebar vira drawer lateral */
+  #sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 260px;
+    height: 100%;
+    transform: translateX(-100%);
+    border-right: 1px solid var(--border);
+    box-shadow: 4px 0 24px rgba(0,0,0,0.5);
+    overflow-y: auto;
+    padding-bottom: env(safe-area-inset-bottom, 16px);
+  }
+  #sidebar.open { transform: translateX(0); }
+
+  /* Overlay escuro por trás do drawer */
+  #sidebar-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    z-index: 149;
+    backdrop-filter: blur(2px);
+  }
+  #sidebar-overlay.open { display: block; }
+
+  /* Botão hamburguer */
+  #nav-toggle {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    top: env(safe-area-inset-top, 10px);
+    left: 12px;
+    z-index: 400;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    width: 40px;
+    height: 40px;
+    font-size: 1.1rem;
+    cursor: pointer;
+    color: var(--text);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Botão fechar dentro do drawer */
+  #sidebar-close-btn {
+    display: flex !important;
+  }
+
+  /* Main ocupa tudo, com padding-top para o botão */
+  #main {
+    width: 100%;
+    flex: 1;
+    overflow-y: auto;
+    padding-top: calc(env(safe-area-inset-top, 0px) + 56px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .tool-page { padding: 16px; min-height: unset; }
+  .page-header h2 { font-size: 1.3rem; }
+}
+
+/* ===================== SAFE AREA DESKTOP ===================== */
+@media (min-width: 769px) {
+  #nav-toggle       { display: none !important; }
+  #sidebar-overlay  { display: none !important; }
+  #sidebar-close-btn{ display: none !important; }
+}

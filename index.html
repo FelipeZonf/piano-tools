@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Piano Tools</title>
+
+  <meta http-equiv="Content-Security-Policy" content="
+    default-src 'self';
+    script-src  'self' 'unsafe-inline';
+    style-src   'self' 'unsafe-inline' https://fonts.googleapis.com;
+    font-src    'self' https://fonts.gstatic.com;
+    img-src     'self' data:;
+    media-src   'self';
+    connect-src 'self';
+    worker-src  'self';
+    object-src  'none';
+    base-uri    'self';
+    form-action 'self';
+  ">
+
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0D1B2A">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Piano Tools">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="icon" href="icons/icon-192.png">
+
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/tools.css">
+  <link rel="stylesheet" href="css/scores.css">
+
+  <style>
+    /* ── Utilitários globais ── */
+    .field-hint   { font-size: 0.72rem; color: var(--text-muted); }
+    .card-hint    { font-size: 0.8rem;  color: var(--text-muted); margin-bottom: 10px; }
+    .field-error  { font-size: 0.8rem;  color: var(--red); min-height: 18px; }
+    .empty-msg    { font-size: 0.85rem; color: var(--text-muted); }
+    .score-counter{ font-size: 0.8rem;  color: var(--text-muted); }
+    .prog-status  { font-size: 0.8rem;  color: var(--gold); margin-top: 12px; min-height: 20px; }
+    .result-label { font-size: 0.72rem; color: var(--text-muted); letter-spacing: 0.06em; margin-bottom: 6px; }
+
+    .slider-wrap   { margin: 10px 0 20px; }
+    .slider-labels { display: flex; justify-content: space-between; margin-top: 6px; font-size: 0.72rem; color: var(--text-muted); }
+
+    .listener-result-grid { display: flex; gap: 24px; align-items: flex-start; flex-wrap: wrap; }
+
+    .ear-play-wrap { text-align: center; margin: 16px 0 20px; }
+    .ear-play-btn  { font-size: 1rem; padding: 14px 28px; }
+    .ear-play-hint { font-size: 0.75rem; color: var(--text-muted); margin-top: 8px; }
+    .ear-feedback  { text-align: center; margin-top: 16px; font-size: 0.9rem; min-height: 22px; font-weight: 500; }
+    .staff-card    { max-width: 460px; }
+
+    /* ── Grade de config responsiva ── */
+    .score-config-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 12px;
+    }
+    .score-config-grid .col { min-width: 0; }
+    .score-config-grid input,
+    .score-config-grid select { width: 100%; }
+
+    /* ── Scores: botões ── */
+    .score-actions-row  { display: flex; flex-wrap: wrap; gap: 8px; }
+    .score-actions-row .btn { flex: 1 1 120px; justify-content: center; }
+    .score-export-row   { display: flex; flex-wrap: wrap; gap: 10px; }
+    .score-export-row .btn  { flex: 1 1 140px; justify-content: center; }
+    .score-dur-row      { display: flex; flex-wrap: wrap; gap: 6px; }
+
+    /* ── Drawer: cabeçalho com logo + fechar ── */
+    .sidebar-logo-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 20px 16px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .sidebar-logo-row h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--gold);
+      line-height: 1.2;
+    }
+    .sidebar-logo-row p {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      margin-top: 3px;
+    }
+
+    #sidebar-close-btn {
+      display: none; /* visível só no mobile via base.css */
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text-dim);
+      font-size: 1rem;
+      width: 34px;
+      height: 34px;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      flex-shrink: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+    #sidebar-close-btn:hover { color: var(--text); border-color: var(--gold-dim); }
+
+    /* ── Marcador de versão ── */
+    #version-bar {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 8px 16px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(201,168,76,0.06);
+    }
+    .version-label {
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--gold);
+      flex-shrink: 0;
+    }
+    #version-input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      font-family: 'Inter', monospace;
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: var(--gold-light);
+      padding: 2px 4px;
+      border-radius: 4px;
+      min-width: 0;
+    }
+    #version-input:focus {
+      background: rgba(201,168,76,0.1);
+    }
+    #version-input::placeholder { color: var(--text-muted); font-weight: 400; }
+
+    /* ── Mobile ajustes finos ── */
+    @media (max-width: 768px) {
+      .card { padding: 16px; }
+      .card .row { flex-direction: column; align-items: stretch; }
+      .card .row select,
+      .card .row input[type="text"],
+      .card .row input[type="number"] { width: 100%; }
+      .score-config-grid { grid-template-columns: 1fr 1fr; }
+      .score-key-w  { width: 32px; height: 50px; font-size: 0.62rem; }
+      .score-key-b  { width: 22px; height: 32px; font-size: 0.55rem; }
+      .score-key-gap{ width: 22px; }
+    }
+    @media (max-width: 400px) {
+      .score-config-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Botão hamburguer (mobile) -->
+<button id="nav-toggle" onclick="toggleMobileNav()" aria-label="Abrir menu">☰</button>
+
+<!-- Overlay (mobile) -->
+<div id="sidebar-overlay" onclick="closeMobileNav()"></div>
+
+<!-- ══════════ SIDEBAR ══════════ -->
+<nav id="sidebar">
+
+  <!-- Logo + botão fechar -->
+  <div class="sidebar-logo-row">
+    <div>
+      <h1>Piano Tools</h1>
+      <p>Ferramentas para pianistas</p>
+    </div>
+    <button id="sidebar-close-btn" onclick="closeMobileNav()" aria-label="Fechar menu">✕</button>
+  </div>
+
+  <!-- Marcador de versão -->
+  <div id="version-bar" title="Clique para editar a versão">
+    <span class="version-label">v</span>
+    <input type="text" id="version-input" maxlength="20" placeholder="1.0.0"
+      title="Digite a versão e pressione Enter"
+      onchange="saveVersion()" onkeydown="if(event.key==='Enter')this.blur()">
+  </div>
+
+  <div class="sidebar-section">Estudo</div>
+  <div class="nav-item active" onclick="showPage('scales', this)">
+    <span class="nav-icon">-</span><span>Escalas &amp; Arpejos</span>
+  </div>
+  <div class="nav-item" onclick="showPage('metro', this)">
+    <span class="nav-icon">-</span><span>Metrônomo</span>
+  </div>
+  <div class="nav-item" onclick="showPage('staff', this)">
+    <span class="nav-icon">-</span><span>Leitura de Partitura</span>
+  </div>
+  <div class="nav-item" onclick="showPage('diary', this)">
+    <span class="nav-icon">-</span><span>Diário de Prática</span>
+  </div>
+
+  <div class="sidebar-section">Teoria</div>
+  <div class="nav-item" onclick="showPage('chord', this)">
+    <span class="nav-icon">-</span><span>Acordes</span>
+  </div>
+  <div class="nav-item" onclick="showPage('prog', this)">
+    <span class="nav-icon">-</span><span>Progressões</span>
+  </div>
+  <div class="nav-item" onclick="showPage('harmony', this)">
+    <span class="nav-icon">-</span><span>Harmonizador</span>
+  </div>
+
+
+  <div class="sidebar-section">Partituras</div>
+  <div class="nav-item" onclick="showPage('scores', this)">
+    <span class="nav-icon">-</span><span>Partituras</span>
+  </div>
+
+  <div class="sidebar-section">Ouvido</div>
+  <div class="nav-item" onclick="showPage('listener', this)">
+    <span class="nav-icon">-</span><span>Identificar Acorde</span>
+  </div>
+  <div class="nav-item" onclick="showPage('ear', this)">
+    <span class="nav-icon">-</span><span>Ditado de Acordes</span>
+  </div>
+
+</nav>
+
+<!-- ══════════ MAIN ══════════ -->
+<main id="main">
+
+  <!-- ── ESCALAS ── -->
+  <section class="tool-page active" id="page-scales">
+    <div class="page-header">
+      <h2>Escalas &amp; Arpejos</h2>
+      <p>Visualize qualquer escala ou arpejo no teclado e veja os graus.</p>
+    </div>
+    <div class="card">
+      <h3>Configurar</h3>
+      <div class="row">
+        <select id="sc-root">
+          <option>C</option><option>C#</option><option>D</option><option>D#</option>
+          <option>E</option><option>F</option><option>F#</option><option>G</option>
+          <option>G#</option><option>A</option><option>A#</option><option>B</option>
+        </select>
+        <select id="sc-type">
+          <option value="major">Maior</option>
+          <option value="minor">Menor Natural</option>
+          <option value="harmonic">Menor Harmônica</option>
+          <option value="melodic">Menor Melódica</option>
+          <option value="penta_maj">Pentatônica Maior</option>
+          <option value="penta_min">Pentatônica Menor</option>
+          <option value="blues">Blues</option>
+          <option value="dorian">Dórico</option>
+          <option value="mixo">Mixolídio</option>
+        </select>
+        <select id="sc-view">
+          <option value="scale">Escala</option>
+          <option value="arp">Arpejo</option>
+        </select>
+        <span id="sc-hint" class="field-hint"></span>
+        <button class="btn btn-gold" onclick="buildScale()">Ver</button>
+        <button class="btn btn-outline" onclick="randomScale()">Aleatório</button>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Teclado</h3>
+      <div class="piano-wrap" id="sc-piano"></div>
+    </div>
+    <div class="card">
+      <h3>Graus</h3>
+      <div class="row" id="sc-degrees"></div>
+    </div>
+  </section>
+
+  <!-- ── METRÔNOMO ── -->
+  <section class="tool-page" id="page-metro">
+    <div class="page-header">
+      <h2>Metrônomo</h2>
+      <p>Com modo progressivo — acelera automaticamente enquanto você pratica.</p>
+    </div>
+    <div class="card">
+      <div class="metro-display">
+        <input type="number" id="metro-bpm" value="80" min="30" max="240"
+          class="bpm-big bpm-input" title="Digite o BPM">
+        <div class="bpm-label">BPM</div>
+        <div id="metro-beats"></div>
+      </div>
+      <div class="slider-wrap">
+        <input type="range" class="slider" id="bpm-slider" min="30" max="240" value="80"
+          oninput="setBPM(this.value)">
+        <div class="slider-labels">
+          <span>30</span><span>120</span><span>240</span>
+        </div>
+      </div>
+      <div class="row">
+        <select id="metro-sig">
+          <option value="4">4/4</option><option value="3">3/4</option>
+          <option value="2">2/4</option><option value="6">6/8</option>
+        </select>
+        <button class="btn btn-gold" id="metro-btn" onclick="toggleMetro()">▶ Iniciar</button>
+        <button class="btn btn-outline" onclick="tapTempo()">Tap Tempo</button>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Modo Progressivo</h3>
+      <div class="score-config-grid">
+        <div class="col">
+          <label class="field-label">BPM inicial</label>
+          <select id="prog-start"></select>
+        </div>
+        <div class="col">
+          <label class="field-label">BPM final</label>
+          <select id="prog-end"></select>
+        </div>
+        <div class="col">
+          <label class="field-label">Incremento a cada N compassos</label>
+          <select id="prog-step-bars"></select>
+        </div>
+        <div class="col">
+          <label class="field-label">Incremento BPM</label>
+          <select id="prog-inc"></select>
+        </div>
+        <div class="col" style="display:flex;align-items:flex-end">
+          <button class="btn btn-gold" onclick="startProg()" style="width:100%">▶ Iniciar Progressivo</button>
+        </div>
+      </div>
+      <p id="prog-status" class="prog-status"></p>
+    </div>
+  </section>
+
+  <!-- ── LEITURA DE PARTITURA ── -->
+  <section class="tool-page" id="page-staff">
+    <div class="page-header">
+      <h2>Leitura de Partitura</h2>
+      <p>Flash cards de leitura à primeira vista. Identifique a nota no pentagrama.</p>
+    </div>
+    <div class="card staff-card">
+      <div class="row">
+        <select id="staff-clef">
+          <option value="treble">Clave de Sol</option>
+          <option value="bass">Clave de Fá</option>
+        </select>
+        <select id="staff-range">
+          <option value="basic">Notas básicas</option>
+          <option value="ledger">Com linhas suplementares</option>
+        </select>
+      </div>
+      <div class="staff-wrap">
+        <svg id="staff-svg" width="300" height="130" viewBox="0 0 300 130"></svg>
+      </div>
+      <div class="flash-answer" id="staff-answer">?</div>
+      <div class="ear-answer-grid" id="staff-choices"></div>
+      <div>
+        <span id="staff-score" class="score-counter">Acertos: 0 / 0</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── DIÁRIO ── -->
+  <section class="tool-page" id="page-diary">
+    <div class="page-header">
+      <h2>Diário de Prática</h2>
+      <p>Registre suas sessões e acompanhe sua evolução.</p>
+    </div>
+    <div class="grid-3">
+      <div class="stat-box"><div class="stat-val" id="stat-total">0h</div><div class="stat-label">Total praticado</div></div>
+      <div class="stat-box"><div class="stat-val" id="stat-sessions">0</div><div class="stat-label">Sessões</div></div>
+      <div class="stat-box"><div class="stat-val" id="stat-avg">0min</div><div class="stat-label">Média por sessão</div></div>
+    </div>
+    <div class="card">
+      <h3>Nova sessão</h3>
+      <div class="score-config-grid">
+        <div class="col">
+          <label class="field-label">O que praticou</label>
+          <select id="diary-what">
+            <option value="" disabled selected>Selecione…</option>
+            <option>Escalas</option><option>Arpejos</option>
+            <option>Acordes e inversões</option><option>Progressões</option>
+            <option>Leitura de partitura</option><option>Técnica e exercícios</option>
+            <option>Repertório</option><option>Improvisação</option>
+            <option>Treino de ouvido</option><option>Teoria</option><option>Outro</option>
+          </select>
+        </div>
+        <div class="col">
+          <label class="field-label">Duração (min)</label>
+          <select id="diary-min">
+            <option value="5">5 min</option><option value="10">10 min</option>
+            <option value="15">15 min</option><option value="20">20 min</option>
+            <option value="25">25 min</option><option value="30" selected>30 min</option>
+            <option value="40">40 min</option><option value="45">45 min</option>
+            <option value="60">60 min</option><option value="90">90 min</option>
+            <option value="120">120 min</option><option value="180">180 min</option>
+          </select>
+        </div>
+        <div class="col">
+          <label class="field-label">BPM atingido</label>
+          <input type="number" class="input" id="diary-bpm" placeholder="Opcional" min="30" max="240" step="1">
+        </div>
+      </div>
+      <div class="col" style="margin-top:12px">
+        <label class="field-label">Observações</label>
+        <textarea id="diary-notes" rows="2" maxlength="200"
+          placeholder="Como foi? O que melhorou? (até 200 caracteres)"></textarea>
+      </div>
+      <p id="diary-error" class="field-error"></p>
+      <button class="btn btn-gold" onclick="addDiaryEntry()" style="margin-top:12px">Registrar sessão</button>
+    </div>
+    <div class="card">
+      <h3>Histórico</h3>
+      <div id="diary-list"><p class="empty-msg">Nenhuma sessão registrada ainda.</p></div>
+    </div>
+  </section>
+
+  <!-- ── ACORDES (Construtor + Cifra unificados) ── -->
+  <section class="tool-page" id="page-chord">
+    <div class="page-header">
+      <h2>Acordes</h2>
+      <p>Construa acordes pela estrutura ou pesquise por cifra — veja notas, inversões e teclado.</p>
+    </div>
+
+    <!-- Abas -->
+    <div class="score-tabs">
+      <button class="score-tab-btn active" id="chord-tab-builder" onclick="chordSetTab('builder')">🎹 Construtor</button>
+      <button class="score-tab-btn" id="chord-tab-cifra" onclick="chordSetTab('cifra')">🔍 Por Cifra</button>
+    </div>
+
+    <!-- ── Painel Construtor ── -->
+    <div id="chord-panel-builder">
+      <div class="card">
+        <div class="row">
+          <select id="ch-root">
+            <option>C</option><option>C#</option><option>D</option><option>D#</option>
+            <option>E</option><option>F</option><option>F#</option><option>G</option>
+            <option>G#</option><option>A</option><option>A#</option><option>B</option>
+          </select>
+          <select id="ch-type">
+            <option value="maj">Maior</option><option value="min">Menor</option>
+            <option value="dim">Diminuto</option><option value="aug">Aumentado</option>
+            <option value="sus2">Sus2</option><option value="sus4">Sus4</option>
+            <option value="maj7">Maior com 7ª maior</option>
+            <option value="dom7">Dominante (7ª)</option>
+            <option value="min7">Menor com 7ª</option>
+            <option value="dim7">Diminuto com 7ª</option>
+            <option value="maj9">Maior com 9ª</option>
+            <option value="min9">Menor com 9ª</option>
+            <option value="dom9">Dominante 9ª</option>
+            <option value="add9">add9</option>
+            <option value="6">Sexta maior</option>
+            <option value="m6">Sexta menor</option>
+          </select>
+          <button class="btn btn-gold" onclick="buildChord()">Ver acorde</button>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Notas</h3>
+        <div class="chord-notes-display" id="ch-notes"></div>
+        <div id="ch-info" class="card-hint"></div>
+      </div>
+      <div class="card">
+        <h3>Inversões</h3>
+        <div class="row" id="ch-inv-btns"></div>
+      </div>
+      <div class="card">
+        <h3>Teclado</h3>
+        <div class="piano-wrap" id="ch-piano"></div>
+      </div>
+    </div>
+
+    <!-- ── Painel Cifra ── -->
+    <div id="chord-panel-cifra" style="display:none">
+      <div class="card">
+        <div class="score-config-grid">
+          <div class="col">
+            <label class="field-label">Fundamental</label>
+            <select id="cifra-root"></select>
+          </div>
+          <div class="col">
+            <label class="field-label">Tipo</label>
+            <select id="cifra-suffix"></select>
+          </div>
+        </div>
+      </div>
+      <div class="card" id="cifra-result">
+        <div class="cifra-result-name" id="cifra-name"></div>
+        <div class="cifra-desc" id="cifra-desc"></div>
+        <div class="chord-notes-display" id="cifra-notes"></div>
+        <div class="row" id="cifra-inv-btns"></div>
+      </div>
+      <div class="card" id="cifra-piano-card">
+        <h3>Teclado</h3>
+        <div class="piano-wrap" id="cifra-piano"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── PROGRESSÕES ── -->
+  <section class="tool-page" id="page-prog">
+    <div class="page-header">
+      <h2>Gerador de Progressões</h2>
+      <p>Progressões clássicas e modernas para explorar e tocar.</p>
+    </div>
+    <div class="card">
+      <h3>Configurar</h3>
+      <div class="row">
+        <select id="pg-root">
+          <option>C</option><option>C#</option><option>D</option><option>D#</option>
+          <option>E</option><option>F</option><option>F#</option><option>G</option>
+          <option>G#</option><option>A</option><option>A#</option><option>B</option>
+        </select>
+        <select id="pg-style">
+          <option value="pop">Pop</option><option value="jazz">Jazz</option>
+          <option value="classico">Clássico</option><option value="gospel">Gospel</option>
+          <option value="bossa">Bossa Nova</option><option value="blues">Blues</option>
+        </select>
+        <button class="btn btn-gold" onclick="genProg()">Gerar</button>
+        <button class="btn btn-outline" onclick="genProg(true)">Outra</button>
+      </div>
+    </div>
+    <div class="card" id="prog-result" style="display:none">
+      <h3 id="prog-title"></h3>
+      <p id="prog-desc" class="card-hint"></p>
+      <div class="row" id="prog-chords"></div>
+    </div>
+  </section>
+
+  <!-- ── HARMONIZADOR ── -->
+  <section class="tool-page" id="page-harmony">
+    <div class="page-header">
+      <h2>Harmonizador de Melodia</h2>
+      <p>Clique nas notas para montar a melodia. O harmonizador sugere o acorde mais adequado para cada nota.</p>
+    </div>
+    <div class="card">
+      <h3>Montar melodia</h3>
+      <div class="har-note-grid">
+        <div class="har-note-row">
+          <span class="har-row-label">Naturais</span>
+          <div class="har-note-btns">
+            <button class="har-note-btn" onclick="harAddNote('C')">C</button>
+            <button class="har-note-btn" onclick="harAddNote('D')">D</button>
+            <button class="har-note-btn" onclick="harAddNote('E')">E</button>
+            <button class="har-note-btn" onclick="harAddNote('F')">F</button>
+            <button class="har-note-btn" onclick="harAddNote('G')">G</button>
+            <button class="har-note-btn" onclick="harAddNote('A')">A</button>
+            <button class="har-note-btn" onclick="harAddNote('B')">B</button>
+          </div>
+        </div>
+        <div class="har-note-row">
+          <span class="har-row-label">Sustenidos</span>
+          <div class="har-note-btns">
+            <button class="har-note-btn har-note-black" onclick="harAddNote('C#')">C#</button>
+            <button class="har-note-btn har-note-black" onclick="harAddNote('D#')">D#</button>
+            <button class="har-note-btn har-note-black" onclick="harAddNote('F#')">F#</button>
+            <button class="har-note-btn har-note-black" onclick="harAddNote('G#')">G#</button>
+            <button class="har-note-btn har-note-black" onclick="harAddNote('A#')">A#</button>
+          </div>
+        </div>
+        <div class="har-note-row">
+          <span class="har-row-label">Bemóis</span>
+          <div class="har-note-btns">
+            <button class="har-note-btn har-note-flat" onclick="harAddNote('Db')">Db</button>
+            <button class="har-note-btn har-note-flat" onclick="harAddNote('Eb')">Eb</button>
+            <button class="har-note-btn har-note-flat" onclick="harAddNote('Gb')">Gb</button>
+            <button class="har-note-btn har-note-flat" onclick="harAddNote('Ab')">Ab</button>
+            <button class="har-note-btn har-note-flat" onclick="harAddNote('Bb')">Bb</button>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:16px">
+        <div class="field-label" style="margin-bottom:6px">Melodia</div>
+        <div id="har-melody-display" class="har-melody-display">
+          <span class="har-melody-empty">Nenhuma nota adicionada</span>
+        </div>
+      </div>
+      <div class="score-config-grid" style="margin-top:14px">
+        <div class="col">
+          <label class="field-label">Tonalidade</label>
+          <select id="har-key"></select>
+        </div>
+        <div class="col">
+          <label class="field-label">Estilo</label>
+          <select id="har-style">
+            <option>Pop</option><option>Jazz</option><option>Clássico</option>
+          </select>
+        </div>
+        <div class="col" style="display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-gold" onclick="harmonize()">Harmonizar</button>
+          <button class="btn btn-outline" onclick="harRemoveLast()">⌫ Apagar</button>
+          <button class="btn btn-outline" onclick="harClear()">✕ Limpar</button>
+        </div>
+      </div>
+    </div>
+    <div class="card" id="har-result" style="display:none">
+      <h3>Harmonização por nota</h3>
+      <div id="har-output"></div>
+    </div>
+  </section>
+
+  <!-- ── PARTITURAS ── -->
+  <section class="tool-page" id="page-scores">
+    <div class="page-header">
+      <h2>Partituras</h2>
+      <p>Crie partituras do zero e exporte em MusicXML, ou importe arquivos MusicXML para visualizar.</p>
+    </div>
+
+    <div class="score-tabs">
+      <button class="score-tab-btn" id="score-tab-editor" onclick="scoreSetMode('editor')">✏️ Criar partitura</button>
+      <button class="score-tab-btn" id="score-tab-viewer" onclick="scoreSetMode('viewer')">📂 Importar MusicXML</button>
+    </div>
+
+    <!-- ─── PAINEL EDITOR ─── -->
+    <div id="score-editor-panel">
+      <div class="card">
+        <h3>Configurações</h3>
+        <div class="score-config-grid">
+          <div class="col">
+            <label class="field-label">Título</label>
+            <input type="text" id="score-title" class="input" placeholder="Sem título" maxlength="80">
+          </div>
+          <div class="col">
+            <label class="field-label">Compositor</label>
+            <input type="text" id="score-composer" class="input" placeholder="Opcional" maxlength="60">
+          </div>
+          <div class="col">
+            <label class="field-label">Clave</label>
+            <select id="score-clef" onchange="scoreUpdateClef()">
+              <option value="treble">Sol (Treble)</option>
+              <option value="bass">Fá (Bass)</option>
+            </select>
+          </div>
+          <div class="col">
+            <label class="field-label">Compasso</label>
+            <select id="score-time" onchange="scoreUpdateTime()">
+              <option value="4/4">4/4</option>
+              <option value="3/4">3/4</option>
+              <option value="2/4">2/4</option>
+              <option value="6/8">6/8</option>
+              <option value="2/2">2/2 (Alla breve)</option>
+            </select>
+          </div>
+          <div class="col">
+            <label class="field-label">Andamento</label>
+            <select id="score-tempo" onchange="scoreUpdateTempo()">
+              <option value="40">40 — Grave</option>
+              <option value="52">52 — Largo</option>
+              <option value="66">66 — Adagio</option>
+              <option value="76">76 — Andante</option>
+              <option value="92">92 — Moderato</option>
+              <option value="100" selected>100 — Moderato</option>
+              <option value="112">112 — Allegretto</option>
+              <option value="132">132 — Allegro</option>
+              <option value="160">160 — Vivace</option>
+              <option value="184">184 — Presto</option>
+              <option value="208">208 — Prestissimo</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Partitura</h3>
+        <div class="score-staff-wrap">
+          <div id="score-editor-staff"></div>
+        </div>
+        <p id="score-editor-status" class="score-editor-status">Nenhuma nota inserida.</p>
+      </div>
+
+      <div class="card">
+        <h3>Inserir notas</h3>
+        <div class="score-toolbar">
+          <span class="score-toolbar-label">Duração</span>
+          <div class="score-dur-row">
+            <button class="score-dur-btn" id="score-dur-w" onclick="scoreSetDuration('w')">𝅝<span class="dur-name">Semibreve</span></button>
+            <button class="score-dur-btn" id="score-dur-h" onclick="scoreSetDuration('h')">𝅗𝅥<span class="dur-name">Mínima</span></button>
+            <button class="score-dur-btn" id="score-dur-q" onclick="scoreSetDuration('q')">♩<span class="dur-name">Semínima</span></button>
+            <button class="score-dur-btn" id="score-dur-e" onclick="scoreSetDuration('e')">♪<span class="dur-name">Colcheia</span></button>
+            <button class="score-dur-btn" id="score-dur-s" onclick="scoreSetDuration('s')">𝅘𝅥𝅯<span class="dur-name">Semicolcheia</span></button>
+          </div>
+        </div>
+        <div class="score-toolbar">
+          <span class="score-toolbar-label">Acidental</span>
+          <div class="score-dur-row">
+            <button class="score-acc-btn" id="score-acc-#" onclick="scoreSetAccidental('#')">♯ Sustenido</button>
+            <button class="score-acc-btn" id="score-acc-b" onclick="scoreSetAccidental('b')">♭ Bemol</button>
+            <button class="score-acc-btn" id="score-acc-n" onclick="scoreSetAccidental('n')">♮ Natural</button>
+            <button class="btn btn-outline" id="score-rest-btn" onclick="scoreToggleRest()">𝄽 Pausa</button>
+          </div>
+        </div>
+        <div id="score-input-piano"></div>
+        <div class="score-actions-row" style="margin-top:14px">
+          <button class="btn btn-outline" onclick="scoreDeleteSelected()">⌫ Apagar nota</button>
+          <button class="btn btn-outline" onclick="scoreClear()">✕ Limpar tudo</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Exportar</h3>
+        <p class="card-hint">Salva em MusicXML (.musicxml), compatível com MuseScore, Sibelius, Finale e Dorico.</p>
+        <div class="score-export-row">
+          <button class="btn btn-gold" onclick="scoreOpenSheet()">📄 Ver como folha</button>
+          <button class="btn btn-outline" onclick="scoreExportMusicXML()">⬇ Exportar MusicXML</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Painel lateral da folha -->
+    <div id="score-sheet-panel"></div>
+
+    <!-- ─── PAINEL VIEWER ─── -->
+    <div id="score-viewer-panel" style="display:none">
+      <div class="card">
+        <h3>Importar arquivo</h3>
+        <div class="score-drop-area" id="score-drop-area"
+          onclick="document.getElementById('score-file-input').click()">
+          <div class="score-drop-icon">🎼</div>
+          <div class="score-drop-title">Clique ou arraste um arquivo aqui</div>
+          <div class="score-drop-sub">Formatos aceitos: .musicxml · .xml · .mxl</div>
+        </div>
+        <input type="file" id="score-file-input"
+          accept=".musicxml,.xml,.mxl,application/zip" style="display:none">
+        <p id="score-viewer-error" class="score-error"></p>
+      </div>
+      <div class="card" id="score-viewer-result" style="display:none">
+        <div class="score-viewer-header">
+          <h3 id="score-viewer-title">—</h3>
+          <div class="composer" id="score-viewer-composer"></div>
+          <div class="score-viewer-info" id="score-viewer-info"></div>
+        </div>
+        <div class="score-viewer-staff-wrap" id="score-viewer-staff"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── DITADO DE ACORDES ── -->
+  <section class="tool-page" id="page-ear">
+    <div class="page-header">
+      <h2>Ditado de Acordes</h2>
+      <p>Ouça o acorde e identifique qual é — treinamento de ouvido.</p>
+    </div>
+    <div class="card">
+      <div class="row">
+        <select id="ear-level">
+          <option value="basic">Tríades simples</option>
+          <option value="seventh">Tétrades (com 7ª)</option>
+          <option value="mixed">Misto</option>
+        </select>
+        <button class="btn btn-gold" onclick="newEarChord()">Novo acorde</button>
+      </div>
+      <div class="ear-play-wrap">
+        <button class="btn btn-outline ear-play-btn" onclick="playEarChord()">🔊 Ouvir acorde</button>
+        <p class="ear-play-hint">Clique para tocar novamente</p>
+      </div>
+      <div class="ear-answer-grid" id="ear-choices"></div>
+      <p id="ear-feedback" class="ear-feedback"></p>
+      <p id="ear-score" class="score-counter">Acertos: 0 / 0</p>
+    </div>
+  </section>
+
+  <!-- ── IDENTIFICAR ACORDE ── -->
+  <section class="tool-page" id="page-listener">
+    <div class="page-header">
+      <h2>Identificar Acorde</h2>
+      <p>Toque no piano ou use o microfone — o app identifica o acorde e as notas.</p>
+    </div>
+    <div class="card">
+      <h3>🎤 Microfone</h3>
+      <div class="row">
+        <button class="btn btn-gold" id="mic-btn" onclick="startMicListener()">🎤 Iniciar escuta</button>
+        <span id="listener-status" class="card-hint" style="align-self:center">Microfone inativo.</span>
+      </div>
+    </div>
+    <div class="card">
+      <h3>🎹 Teclado clicável</h3>
+      <p class="card-hint">Clique nas teclas para selecionar as notas do acorde.</p>
+      <div class="piano-wrap" id="listener-piano"></div>
+      <div style="margin-top:14px">
+        <button class="btn btn-outline" onclick="clearClickedNotes()">✕ Limpar seleção</button>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Resultado</h3>
+      <div class="listener-result-grid">
+        <div>
+          <div class="result-label">NOTAS DETECTADAS</div>
+          <div class="chord-notes-display" id="listener-notes"><span class="empty-msg">—</span></div>
+        </div>
+        <div>
+          <div class="result-label">ACORDE</div>
+          <div class="cifra-result-name" id="listener-chord-name">—</div>
+          <div class="cifra-desc" id="listener-chord-desc"></div>
+        </div>
+      </div>
+      <div class="piano-wrap" id="listener-result-piano" style="margin-top:16px"></div>
+    </div>
+  </section>
+
+</main>
+
+<!-- ══════════ SCRIPTS ══════════ -->
+<script src="js/data.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/piano.js"></script>
+<script src="js/nav.js"></script>
+<script src="js/tools/scales.js"></script>
+<script src="js/tools/metronome.js"></script>
+<script src="js/tools/staff.js"></script>
+<script src="js/tools/diary.js"></script>
+<script src="js/tools/chord.js"></script>
+<script src="js/tools/progressions.js"></script>
+<script src="js/tools/harmony.js"></script>
+<script src="js/tools/cifra.js"></script>
+<script src="js/tools/ear.js"></script>
+<script src="js/tools/listener.js"></script>
+<script src="js/tools/scores.js"></script>
+<script src="js/init.js"></script>
+
+<script>
+  /* ── Service Worker ── */
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js')
+        .catch(err => console.warn('SW não registrado:', err));
+    });
+  }
+
+  /* ── Versão ── */
+  function saveVersion() {
+    const val = document.getElementById('version-input').value.trim();
+    localStorage.setItem('pianotools-version', val);
+  }
+  (function loadVersion() {
+    const saved = localStorage.getItem('pianotools-version');
+    const input = document.getElementById('version-input');
+    if (input) input.value = saved || '';
+  })();
+
+  /* ── Mobile nav ── */
+  function toggleMobileNav() {
+    document.getElementById('sidebar').classList.toggle('open');
+    document.getElementById('sidebar-overlay').classList.toggle('open');
+  }
+  function closeMobileNav() {
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('sidebar-overlay').classList.remove('open');
+  }
+  /* Fechar ao navegar em mobile */
+  document.querySelectorAll('.nav-item').forEach(el => {
+    el.addEventListener('click', () => {
+      if (window.innerWidth <= 768) closeMobileNav();
+    });
+  });
+</script>
+</body>
+</html>
